@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Brain, Mail, Lock } from "lucide-react"
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const registered = searchParams.get("registered")
@@ -31,7 +31,6 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -46,14 +45,12 @@ export default function LoginPage() {
         return
       }
 
-      
       if (data.access_token) {
         localStorage.setItem("token", data.access_token)
         localStorage.setItem("userName", data.name || formData.email.split("@")[0])
         localStorage.setItem("userEmail", formData.email)
       }
 
-      
       await signIn("credentials", {
         redirect: false,
         email: formData.email,
@@ -72,7 +69,6 @@ export default function LoginPage() {
     setError("")
     setLoading(true)
     try {
-      
       await signIn("google", { callbackUrl: "/dashboard" })
     } catch (error) {
       setError("Google sign-in failed. Please try again.")
@@ -157,5 +153,17 @@ export default function LoginPage() {
         </Card>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }
