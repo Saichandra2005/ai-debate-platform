@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getDebateSummary } from "@/lib/api"
 
@@ -42,7 +42,7 @@ interface DebateSummary {
   created_at: string
 }
 
-export default function DebateReviewPage() {
+function DebateReviewContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const summaryId = searchParams.get("id")
@@ -114,7 +114,7 @@ export default function DebateReviewPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {}
+      {/* Header */}
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -140,13 +140,13 @@ export default function DebateReviewPage() {
       </header>
 
       <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">
-        {}
+        {/* Title */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Debate Performance Review</h1>
           <p className="text-muted-foreground">Topic: {summary.topic}</p>
         </div>
 
-        {}
+        {/* Overall Score */}
         <Card className="border-2">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
@@ -166,7 +166,7 @@ export default function DebateReviewPage() {
           </CardContent>
         </Card>
 
-        {}
+        {/* Breakdown Scores */}
         <Card>
           <CardHeader>
             <CardTitle>Performance Breakdown</CardTitle>
@@ -188,7 +188,7 @@ export default function DebateReviewPage() {
           </CardContent>
         </Card>
 
-        {}
+        {/* AI Judge Comment */}
         <Card className="bg-accent/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -203,7 +203,7 @@ export default function DebateReviewPage() {
           </CardContent>
         </Card>
 
-        {}
+        {/* Strengths */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-green-600">
@@ -223,7 +223,7 @@ export default function DebateReviewPage() {
           </CardContent>
         </Card>
 
-        {}
+        {/* Weaknesses */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-yellow-600">
@@ -243,7 +243,7 @@ export default function DebateReviewPage() {
           </CardContent>
         </Card>
 
-        {}
+        {/* Critical Mistakes */}
         {summary.summary.mistakes.length > 0 && (
           <Card>
             <CardHeader>
@@ -265,7 +265,7 @@ export default function DebateReviewPage() {
           </Card>
         )}
 
-        {}
+        {/* Recommendations */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -287,7 +287,7 @@ export default function DebateReviewPage() {
           </CardContent>
         </Card>
 
-        {}
+        {/* Focus Areas */}
         <Card>
           <CardHeader>
             <CardTitle>Key Focus Areas for Practice</CardTitle>
@@ -303,7 +303,7 @@ export default function DebateReviewPage() {
           </CardContent>
         </Card>
 
-        {}
+        {/* Actions */}
         <div className="flex gap-4 justify-center pt-4">
           <Button
             variant="outline"
@@ -317,5 +317,17 @@ export default function DebateReviewPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function DebateReviewPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading review...</p>
+      </div>
+    }>
+      <DebateReviewContent />
+    </Suspense>
   )
 }
