@@ -4,64 +4,33 @@ import CredentialsProvider from "next-auth/providers/credentials"
 
 const handler = NextAuth({
   providers: [
-    
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      authorization: {
-        params: {
-          prompt: "select_account",  
-        },
-      },
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-    
-    
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
-
-        try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-            }),
-          })
-
-          const data = await response.json()
-
-          if (response.ok && data.access_token) {
-            return {
-              id: data.user_id || credentials.email,
-              email: credentials.email,
-              name: data.name || credentials.email.split('@')[0],
-              accessToken: data.access_token,
-            } as any
-          }
-
-          return null
-        } catch (error) {
-          console.error("Auth error:", error)
-          return null
+        return {
+          id: credentials.email,
+          email: credentials.email,
+          name: credentials.email.split("@")[0],
         }
-      }
-    })
+      },
+    }),
   ],
-  
   callbacks: {
-    async signIn({ user, account }) {
-      
+    async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         try {
+          // Call your backend to register/login with Google
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -73,58 +42,44 @@ const handler = NextAuth({
             }),
           })
 
-          if (!response.ok) {
-            console.error("Failed to create/login Google user")
-            return false
-          }
-
           const data = await response.json()
-          
-          ;(user as any).accessToken = data.access_token
-          ;(user as any).name = data.name
-          
-          return true
+
+          if (response.ok && data.access_token) {
+            // Store token in user object (will be available in session)
+            user.accessToken = data.access_token
+            user.userId = data.user_id
+            return true
+          }
         } catch (error) {
-          console.error("Google sign-in error:", error)
+          console.error("Google sign-in backend error:", error)
           return false
         }
       }
-      
       return true
     },
-    
     async jwt({ token, user }) {
-      
-      if (user) {
-        token.accessToken = (user as any).accessToken
-        token.email = user.email
-        token.name = user.name
-        token.picture = user.image
+      // Add access token to JWT
+      if (user?.accessToken) {
+        token.accessToken = user.accessToken
+        token.userId = user.userId
       }
       return token
     },
-    
     async session({ session, token }) {
-      
-      const s = session as any
-      s.accessToken = token.accessToken
-      s.user.email = token.email
-      s.user.name = token.name
-      s.user.image = token.picture
-      return s
-    }
+      // Add access token to session (accessible on client)
+      if (token.accessToken) {
+        session.accessToken = token.accessToken
+        session.userId = token.userId
+      }
+      return session
+    },
   },
-  
   pages: {
-    signIn: '/login',
-    signOut: '/login',
-    error: '/login',
+    signIn: "/login",
   },
-  
   session: {
     strategy: "jwt",
   },
-  
   secret: process.env.NEXTAUTH_SECRET,
 })
 
