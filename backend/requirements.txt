@@ -6,6 +6,7 @@ flask-cors==4.0.0
 
 # AI/ML - LATEST VERSION (google-genai replaces google-generativeai)
 google-genai==0.3.0
+numpy==1.24.3
 
 # Database
 pymongo==4.6.1
