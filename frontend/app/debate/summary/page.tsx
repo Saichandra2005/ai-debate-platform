@@ -30,8 +30,16 @@ export default function DebateSummaryPage() {
       return
     }
 
-    fetch("http:
-      headers: { Authorization: `Bearer ${token}` },
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/debate/summary`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}` 
+      },
+      body: JSON.stringify({
+        topic: topic,
+        debate_ids: debateIds
+      })
     })
       .then(res => res.json())
       .then(data => {
