@@ -2,11 +2,9 @@
 
 import { useSession } from "next-auth/react"
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
 
 export function useAuthSync() {
   const { data: session, status } = useSession()
-  const router = useRouter()
 
   useEffect(() => {
     if (status === "authenticated" && session?.accessToken) {
@@ -17,12 +15,9 @@ export function useAuthSync() {
       
       console.log("Token synced to localStorage")
       
-      // Check current path and redirect if on login page
-      if (window.location.pathname === "/login") {
-        router.push("/dashboard")
-      }
+      // Don't auto-redirect - let the login page handle it
     }
-  }, [session, status, router])
+  }, [session, status])
 
   return { session, status }
 }
