@@ -33,10 +33,17 @@ summaries_collection = db.debate_summaries
 
 app = Flask(__name__)
 
-CORS(app, origins=[
-    "http://localhost:3000",
-    "https://*.vercel.app",
-], supports_credentials=True)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "http://localhost:3000",
+            "https://ai-debate-platform-ecru.vercel.app"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-key")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=7)  # Tokens valid for 7 days
