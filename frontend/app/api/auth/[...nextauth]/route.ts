@@ -30,6 +30,8 @@ const handler = NextAuth({
     async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         try {
+          console.log("Google sign-in callback triggered")
+          
           // Call your backend to register/login with Google
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`, {
             method: "POST",
@@ -43,12 +45,17 @@ const handler = NextAuth({
           })
 
           const data = await response.json()
+          console.log("Backend response:", data)
 
           if (response.ok && data.access_token) {
-            // Store token in user object (will be available in session)
+            // Store token in user object (will be passed to JWT callback)
             user.accessToken = data.access_token
             user.userId = data.user_id
+            console.log("Token stored:", data.access_token.substring(0, 20) + "...")
             return true
+          } else {
+            console.error("Backend auth failed:", data)
+            return false
           }
         } catch (error) {
           console.error("Google sign-in backend error:", error)
@@ -57,20 +64,32 @@ const handler = NextAuth({
       }
       return true
     },
-    async jwt({ token, user }) {
-      // Add access token to JWT
-      if (user?.accessToken) {
+    async jwt({ token, user, account }) {
+      // First time JWT callback is invoked, user object is available
+      if (user) {
         token.accessToken = user.accessToken
         token.userId = user.userId
+        token.email = user.email
+        token.name = user.name
+        console.log("JWT token created with accessToken")
       }
       return token
     },
     async session({ session, token }) {
-      // Add access token to session (accessible on client)
+      // Make token available to client
       if (token.accessToken) {
         session.accessToken = token.accessToken
         session.userId = token.userId
+        console.log("Session created with accessToken")
       }
+      
+      // Ensure user info is present
+      session.user = {
+        ...session.user,
+        email: token.email,
+        name: token.name,
+      }
+      
       return session
     },
   },
@@ -81,6 +100,7 @@ const handler = NextAuth({
     strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: true, // Enable debug mode
 })
 
 export { handler as GET, handler as POST }
