@@ -1,10 +1,9 @@
 "use client"
 
-import { Suspense, useState, useEffect } from "react"
+import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
-import { useAuthSync } from "@/hooks/useAuthSync"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,7 +16,6 @@ function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const registered = searchParams.get("registered")
-  const { session, status } = useAuthSync() // Add this hook
 
   const [formData, setFormData] = useState({ email: "", password: "" })
   const [loading, setLoading] = useState(false)
@@ -70,21 +68,22 @@ function LoginContent() {
   const handleGoogleSignIn = async () => {
     setError("")
     setLoading(true)
+    
+    // Mark that we just signed in with Google
+    sessionStorage.setItem("justSignedInWithGoogle", "true")
+    
     try {
-      // Just trigger Google OAuth - useAuthSync will handle token
-      await signIn("google", { callbackUrl: "/dashboard" })
+      // Let NextAuth handle the redirect
+      await signIn("google", { 
+        callbackUrl: "/dashboard",
+        redirect: true
+      })
     } catch (error) {
+      console.error("Google sign-in error:", error)
       setError("Google sign-in failed. Please try again.")
       setLoading(false)
     }
   }
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (status === "authenticated" && session?.accessToken) {
-      router.push("/dashboard")
-    }
-  }, [status, session, router])
 
   return (
     <main className="min-h-screen bg-background flex items-center justify-center p-4">
