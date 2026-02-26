@@ -189,38 +189,37 @@ export default function VoiceDebateSessionPage() {
     }
   }
 
-  // ── FIX 1b: Speak sentence-by-sentence as streaming chunks arrive ─────────
-  const streamingSentenceBuffer = useRef("")
-  const hasSpokenForCurrentAiMsg = useRef(false)
+  // ── FIX 1b: Speak every sentence as it arrives during streaming ──────────
+  const spokenUpToIndex = useRef(0)  // how many chars of the AI response we've already queued
 
   const speakStreamChunk = (fullTextSoFar: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return
 
-    // Find new text since last call
-    const newText = fullTextSoFar.slice(streamingSentenceBuffer.current.length)
-    streamingSentenceBuffer.current = fullTextSoFar
+    // Only look at text we haven't spoken yet
+    const unspoken = fullTextSoFar.slice(spokenUpToIndex.current)
 
-    // If we find a complete sentence in the new text, speak it immediately
-    const sentenceEnd = newText.search(/[.!?]/)
-    if (sentenceEnd !== -1) {
-      // Extract the complete sentence(s) from the buffer
-      const bufferUpToNow = fullTextSoFar
-      const sentenceMatch = bufferUpToNow.match(/^.*?[.!?]+/s)
-      if (sentenceMatch && !hasSpokenForCurrentAiMsg.current) {
-        // Speak whatever complete sentences we have so far
-        const toSpeak = sentenceMatch[0].trim()
-        if (toSpeak.length > 10) {
-          hasSpokenForCurrentAiMsg.current = true
-          const utterance = new SpeechSynthesisUtterance(toSpeak)
-          utterance.rate = 1.0
-          utterance.pitch = 1.0
-          utterance.volume = 1.0
-          utterance.lang = "en-US"
-          utteranceRef.current = utterance
-          setIsSpeaking(true)
-          window.speechSynthesis.speak(utterance)
+    // Find all complete sentences in the unspoken portion
+    const sentenceRegex = /[^.!?]+[.!?]+/g
+    let match
+    while ((match = sentenceRegex.exec(unspoken)) !== null) {
+      const sentence = match[0].trim()
+      if (sentence.length > 5) {
+        const utterance = new SpeechSynthesisUtterance(sentence)
+        utterance.rate = 1.0
+        utterance.pitch = 1.0
+        utterance.volume = 1.0
+        utterance.lang = "en-US"
+        utterance.onstart = () => setIsSpeaking(true)
+        utterance.onend = () => {
+          // Only clear speaking state if nothing else is queued
+          if (window.speechSynthesis.pending === false) setIsSpeaking(false)
         }
+        utteranceRef.current = utterance
+        window.speechSynthesis.speak(utterance)
+        setIsSpeaking(true)
       }
+      // Move pointer forward past this sentence
+      spokenUpToIndex.current += match[0].length
     }
   }
 
@@ -251,8 +250,7 @@ export default function VoiceDebateSessionPage() {
     setMessages((m) => [...m, { id: aiMsgId, sender: "ai", content: "" }])
 
     // Reset streaming speech state
-    streamingSentenceBuffer.current = ""
-    hasSpokenForCurrentAiMsg.current = false
+    spokenUpToIndex.current = 0
     stopSpeaking()
 
     apiDebateStream(
@@ -279,16 +277,19 @@ export default function VoiceDebateSessionPage() {
         if (response.debate_id) setDebateIds((ids) => [...ids, response.debate_id])
         if (mode === "turn-based") setTurnsLeft((t) => (t !== null ? t - 1 : 0))
 
-        // Speak any remaining text that wasn't spoken during streaming
-        const spoken = streamingSentenceBuffer.current
-        const remaining = response.ai_response.slice(spoken.length).trim()
+        // Speak any trailing text that didn't end with punctuation
+        const remaining = response.ai_response.slice(spokenUpToIndex.current).trim()
         if (remaining.length > 5) {
           const utterance = new SpeechSynthesisUtterance(remaining)
           utterance.rate = 1.0
           utterance.lang = "en-US"
+          utterance.onend = () => setIsSpeaking(false)
           utteranceRef.current = utterance
           setIsSpeaking(true)
           window.speechSynthesis.speak(utterance)
+        } else {
+          // Nothing remaining — speaking done
+          if (!window.speechSynthesis.speaking) setIsSpeaking(false)
         }
 
         setLoading(false)
